@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# shim for mpiexec
+shift # skip -n
+echo "using $1 processors" >output
+shift # skip number of processors
+shift # skip --bind-to
+shift # skip none
+executable="$1"
+shift
+"$executable" $@

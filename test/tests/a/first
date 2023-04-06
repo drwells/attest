@@ -1,0 +1,4 @@
+#!/bin/bash
+
+echo "hello, world with input" >>output
+cat $1 >>output

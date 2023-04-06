@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# forwarding wrapper to 'diff' which ignores the flags we send to numdiff
+
+diff $7 $8

@@ -98,13 +98,21 @@ class Parameters:
 
         # These are the only two required inputs:
         if self.mpiexec == "":
-            raise ValueError("attest requires that MPIEXEC be provided either"
+            raise ValueError("attest requires that mpiexec be provided either"
                              " to configure, stored in attest.conf, or"
                              " explicitly provided as a command-line argument"
                              " to attest itself.")
         if not os.path.isfile(self.mpiexec):
             raise ValueError("The given path to mpiexec <" + self.mpiexec + ">"
                              " is not valid.")
+        if not os.access(self.mpiexec, os.X_OK):
+            raise ValueError("The given path to mpiexec <" + self.mpiexec + ">"
+                             " is not executable.")
+        # if we have a relative path, try to expand it
+        if self.mpiexec[0] == '.':
+            expanded_mpiexec = os.path.abspath(self.mpiexec)
+            if os.access(expanded_mpiexec, os.X_OK):
+                self.mpiexec = expanded_mpiexec
 
         if self.numdiff == "":
             raise ValueError("attest requires that NUMDIFF be provided either"
@@ -114,6 +122,14 @@ class Parameters:
         if not os.path.isfile(self.numdiff):
             raise ValueError("The given path to numdiff <" + self.numdiff + ">"
                              " is not valid.")
+        if not os.access(self.numdiff, os.X_OK):
+            raise ValueError("The given path to numdiff <" + self.numdiff + ">"
+                             " is not executable.")
+        # if we have a relative path, try to expand it
+        if self.numdiff[0] == '.':
+            expanded_numdiff = os.path.abspath(self.numdiff)
+            if os.access(expanded_numdiff, os.X_OK):
+                self.numdiff = expanded_numdiff
 
 
 def n_mpi_processes(input_file):
@@ -518,7 +534,7 @@ def main():
         print("\ncannot be run since either the input or output file missing. "
               "This usually means\nthat one of the files is a broken link. "
               "Broken links to test files occur when\na test exists in one "
-              "revision of IBAMR but not another: for example, if a test\nhas "
+              "revision but not another: for example, if a test\nhas "
               "been removed then links to its input and output files may "
               "still be present\nin the build directory. This is usually "
               "harmless. A good way to get rid of this\nwarning is to delete "
