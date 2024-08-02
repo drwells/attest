@@ -69,6 +69,11 @@ class Parameters:
 
     show_only: only print test names and do not execute them.
 
+    error_on_missing_tests: return 1 if any tests are not correctly set up
+    (i.e., as executable, input file, and output file triples). This checks that
+    all optional dependencies are enabled and all tests are correctly
+    configured.
+
     include_regex: regular expression matching tests to run. Defaults to '.+'
     (i.e., run all tests).
 
@@ -90,6 +95,7 @@ class Parameters:
         self.numdiff = input_arguments.numdiff
         self.n_processors = input_arguments.n_processors
         self.show_only = input_arguments.show_only
+        self.error_on_missing_tests = input_arguments.error_on_missing_tests
         self.test_directory = os.getcwd() + input_arguments.test_directory
         self.include_regex = input_arguments.include_regex
         self.exclude_regex = input_arguments.exclude_regex
@@ -478,6 +484,12 @@ def main():
                         action='store_true', dest='show_only',
                         help="Disable actual execution of tests and instead "
                         "print the names of tests that would have been run.")
+    parser.add_argument('--error-on-missing-tests',
+                        default=ast.literal_eval(conf['error_on_missing_tests']),
+                        action='store_true', dest='error_on_missing_tests',
+                        help="If any tests are missing (even those corresponding "
+                        "to optional dependencies) or incorrectly configured, "
+                        "then return 1 instead of running tests.")
     parser.add_argument('--test-directory', metavar='D', type=str,
                         default=conf['test_directory'],
                         dest='test_directory',
@@ -536,33 +548,46 @@ def main():
                 unstarted_tests.append(Test(executable, input_file,
                                             output_file,
                                             parameters=parameters))
+            else:
+                # If we are not doing the strict 'all tests are on'
+                # verification, only warn about tests with invalid input or
+                # output files: i.e., skip checking executables here since we
+                # copy all input files regardless of what actually compiled and
+                # some tests may not be compiled if their dependencies are
+                # unavailable.
+                if parameters.error_on_missing_tests:
+                    check_list = [executable, input_file, output_file]
+                else:
+                    check_list = [input_file, output_file]
 
-            # only warn about tests with invalid input or output files: i.e.,
-            # skip checking executables here since we copy all input files
-            # regardless of what actually compiled and some tests may not be
-            # compiled if their dependencies are unavailable.
-            elif not all((os.path.isfile(f)
-                          for f in [input_file, output_file])):
-                invalid_test_inputs.append(input_file_name)
+                if not all((os.path.isfile(f) for f in check_list)):
+                    invalid_test_inputs.append(input_file_name)
 
     if invalid_test_inputs:
-        print("\nWarning: The test(s) with input files \n")
+        if parameters.error_on_missing_tests:
+            header_string = "Error"
+        else:
+            header_string = "Warning"
+        print("\n" + header_string + ": The test(s) with input files \n")
         for invalid_test_input in invalid_test_inputs:
             print("   ", invalid_test_input)
 
-        print("\ncannot be run since either the input or output file missing. "
-              "This usually means\nthat one of the files is a broken link. "
-              "Broken links to test files occur when\na test exists in one "
-              "revision but not another: for example, if a test\nhas "
-              "been removed then links to its input and output files may "
-              "still be present\nin the build directory. This is usually "
-              "harmless. A good way to get rid of this\nwarning is to delete "
-              "all test input and output files. To achieve this, execute\nthe "
-              "following commands in the build directory:\n"
+        print("\ncannot be run since the either the executable, input, or output "
+              "files are\nmissing. This usually means that one of the files is a "
+              "broken link. Broken\nlinks to test files occur when a test exists "
+              "in one revision but not another:\nfor example, if a test has been "
+              "removed then links to its input and output\nfiles may still be "
+              "present in the build directory. This is usually harmless. A\ngood "
+              "way to get rid of this warning is to delete all test input and "
+              "output\nfiles. To achieve this, execute the following commands in "
+              "the build directory:"
               "\n"
               "    cd tests/\n"
               "    find ./ -name '*.input' -delete\n"
               "    find ./ -name '*.output' -delete\n")
+
+        if (parameters.error_on_missing_tests):
+            sys.exit(1)
 
     unstarted_tests.sort(key=lambda u: u.n_mpi_processes())
 
