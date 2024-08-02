@@ -416,6 +416,19 @@ def main():
     config_file.read('attest.conf')
     conf = config_file['attest']  # shorthand
 
+    # Encode defaults in 'conf'. This way we can keep adding new parameters
+    # without needing to add new things to attest.conf.in (which is not
+    # backwards compatible)
+    conf['jobs'] = '1'
+    conf['keep_work_directories'] = 'False'
+    conf['show_only'] = 'False'
+    conf['error_on_missing_tests'] = 'False'
+    conf['test_directory'] = "/tests/"
+    conf['test_timeout'] = '600'
+    conf['include_regex'] = ".*"
+    conf['exclude_regex'] = "^$"
+    conf['verbose'] = 'False'
+
     for entry in sys.argv:
         # argparse doesn't support writing -j8 (i.e., with no space), so
         # manually pull that out:
